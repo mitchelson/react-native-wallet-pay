@@ -174,9 +174,3 @@ export const useQuickPay = (defaultConfig = {}) => {
     isProcessing,
   };
 };
-
-// Exportações nomeadas dos hooks
-export { useWalletPay, useQuickPay };
-
-// Export default
-export default useWalletPay;
