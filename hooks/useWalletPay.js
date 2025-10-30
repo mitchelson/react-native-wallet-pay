@@ -1,12 +1,6 @@
 import { useState, useCallback } from "react";
 import { Alert, Platform } from "react-native";
-import WalletPay, {
-  PAYMENT_PROVIDERS,
-  COUNTRIES,
-  CURRENCIES,
-  PAYMENT_NETWORKS,
-  ERROR_CODES,
-} from "./index";
+import WalletPay from "../index";
 
 /**
  * Hook personalizado para pagamentos com carteira digital
@@ -181,14 +175,8 @@ export const useQuickPay = (defaultConfig = {}) => {
   };
 };
 
-// Exportar constantes úteis
-export {
-  PAYMENT_PROVIDERS,
-  COUNTRIES,
-  CURRENCIES,
-  PAYMENT_NETWORKS,
-  ERROR_CODES,
-};
+// Exportações nomeadas dos hooks
+export { useWalletPay, useQuickPay };
 
-// Exportar classe principal
+// Export default
 export default useWalletPay;

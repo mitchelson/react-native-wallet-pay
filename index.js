@@ -222,5 +222,9 @@ class WalletPay {
 
 const walletPay = new WalletPay();
 
+// Import and re-export hooks
+export { useWalletPay, useQuickPay } from "./hooks/useWalletPay";
+
+// Export both the class and instance
 export { WalletPay };
 export default walletPay;
