@@ -1,0 +1,57 @@
+{
+  "name": "react-native-wallet-pay",
+  "version": "1.0.0",
+  "description": "Biblioteca agnóstica para pagamentos com Apple Pay e Google Pay em React Native, compatível com qualquer gateway",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "scripts": {
+    "test": "jest",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "example:ios": "cd example && react-native run-ios",
+    "example:android": "cd example && react-native run-android"
+  },
+  "keywords": [
+    "react-native",
+    "apple-pay",
+    "google-pay",
+    "payments",
+    "wallet",
+    "stripe",
+    "paypal",
+    "payment-gateway",
+    "ios",
+    "android",
+    "passkit"
+  ],
+  "author": "Mitchelson Silva <mitchelsonps@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mitchelson/react-native-wallet-pay.git"
+  },
+  "homepage": "https://github.com/mitchelson/react-native-wallet-pay#readme",
+  "bugs": {
+    "url": "https://github.com/mitchelson/react-native-wallet-pay/issues"
+  },
+  "peerDependencies": {
+    "react": ">=16.8.0",
+    "react-native": ">=0.60.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.0",
+    "@types/react-native": "^0.72.0",
+    "eslint": "^8.0.0",
+    "jest": "^29.0.0",
+    "typescript": "^5.0.0"
+  },
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "hooks/",
+    "ios/",
+    "android/",
+    "README.md",
+    "LICENSE"
+  ]
+}
