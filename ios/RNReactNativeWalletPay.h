@@ -1,18 +1,10 @@
-#if __has_include("RCTBridgeModule.h")
-#import "RCTBridgeModule.h"
-#else
-#import <React/RCTBridgeModule.h>
-#endif
+//
+//  RNReactNativeWalletPay.h
+//  React Native Wallet Pay
+//
+//  This header is no longer needed as all functionality 
+//  has been moved to WalletPayModule.swift
+//
 
-#import <PassKit/PassKit.h>
-
-@interface RNReactNativeWalletPay : NSObject <RCTBridgeModule>
-
-/**
- * Check if wallet payment methods are available on device
- * @return Promise resolving to availability status for Apple Pay and Google Pay
- */
-- (void)isWalletAvailable:(RCTPromiseResolveBlock)resolve rejecter:(RCTPromiseRejectBlock)reject;
-
-@end
+// This file is kept for compatibility but is no longer used
   

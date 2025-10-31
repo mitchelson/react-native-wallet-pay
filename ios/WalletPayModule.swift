@@ -3,7 +3,6 @@ import PassKit
 import React
 
 struct PaymentRequestParams: Codable {
-    let merchantIdentifier: String
     let supportedNetworks: [String]
     let countryCode: String
     let currencyCode: String
@@ -26,7 +25,34 @@ class WalletPayModule: NSObject {
     func canMakeApplePayments(_ resolver: RCTPromiseResolveBlock, rejecter: RCTPromiseRejectBlock) {
         resolver(PKPaymentAuthorizationController.canMakePayments())
     }
+    
+    @objc
+    func isWalletAvailable(_ resolver: RCTPromiseResolveBlock, rejecter: RCTPromiseRejectBlock) {
+        let applePayAvailable = PKPaymentAuthorizationController.canMakePayments()
+        let googlePayAvailable = false // Google Pay não disponível no iOS
+        
+        let result: [String: Any] = [
+            "applePay": applePayAvailable,
+            "googlePay": googlePayAvailable
+        ]
+        
+        resolver(result)
+    }
 
+    private func getMerchantIdentifier() -> String? {
+        if let entitlements = Bundle.main.object(forInfoDictionaryKey: "Entitlements") as? [String: Any],
+           let merchantIds = entitlements["com.apple.developer.in-app-payments"] as? [String],
+           let merchantId = merchantIds.first {
+            return merchantId
+        }
+        
+        if let merchantId = Bundle.main.object(forInfoDictionaryKey: "ApplePayMerchantIdentifier") as? String {
+            return merchantId
+        }
+        
+        return nil
+    }
+    
     @objc
     func requestApplePayment(_ paramsJSON: NSDictionary, resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
         guard let jsonData = try? JSONSerialization.data(withJSONObject: paramsJSON, options: []),
@@ -34,9 +60,14 @@ class WalletPayModule: NSObject {
             rejecter("E_INVALID_PARAMS", "Invalid payment request parameters", nil)
             return
         }
+        
+        guard let merchantIdentifier = getMerchantIdentifier() else {
+            rejecter("E_MERCHANT_ID_NOT_FOUND", "Apple Pay Merchant Identifier not found. Please configure Apple Pay in Xcode Project Settings > Signing & Capabilities > Apple Pay, or add 'ApplePayMerchantIdentifier' key to your Info.plist file.", nil)
+            return
+        }
 
         let paymentRequest = PKPaymentRequest()
-        paymentRequest.merchantIdentifier = params.merchantIdentifier
+        paymentRequest.merchantIdentifier = merchantIdentifier
         paymentRequest.supportedNetworks = mapSupportedNetworks(params.supportedNetworks)
         paymentRequest.merchantCapabilities = .capability3DS
         paymentRequest.countryCode = params.countryCode

@@ -22,9 +22,13 @@ npm install react-native-wallet-pay --save
 
 1. **Adicione o framework PassKit** ao seu projeto iOS
 2. **Configure seu Merchant ID** no Apple Developer Portal
-3. **Adicione as capabilities** necessárias no Xcode:
-   - Apple Pay Payment Processing
-   - In-App Purchase (se necessário)
+3. **Configure Apple Pay no Xcode**:
+   - Abra seu projeto no Xcode
+   - Vá para **Signing & Capabilities**
+   - Adicione a capability **Apple Pay**
+   - Selecione seu Merchant ID
+
+> ⚠️ **Importante**: A partir desta versão, o `merchantIdentifier` é obtido automaticamente das configurações do Xcode (arquivo .entitlements) e não precisa mais ser passado como parâmetro na configuração do pagamento.
 
 ### Configuração automática (React Native 0.60+)
 
@@ -62,7 +66,6 @@ const PaymentScreen = () => {
 
   const handlePayment = () => {
     processApplePayment({
-      merchantIdentifier: "merchant.com.seuapp",
       amount: 99.99,
       currencyCode: CURRENCIES.USD,
       countryCode: COUNTRIES.US,
@@ -95,7 +98,6 @@ console.log(availability); // { applePay: true, googlePay: false }
 const result = await WalletPay.processPayment(
   {
     applePay: {
-      merchantIdentifier: "merchant.com.seuapp",
       amount: 29.99,
       currencyCode: "USD",
       countryCode: "US",
@@ -171,7 +173,6 @@ const paypalProcessor = async (paymentData) => {
 
 ```javascript
 const applePayConfig = {
-  merchantIdentifier: "merchant.com.seuapp", // Obrigatório
   amount: 99.99, // Obrigatório
   currencyCode: "USD", // Obrigatório
   countryCode: "US", // Obrigatório
@@ -211,7 +212,6 @@ const {
 
 ```javascript
 const { quickPay, isProcessing } = useQuickPay({
-  merchantIdentifier: "merchant.com.seuapp",
   currencyCode: "USD",
   countryCode: "US",
 });

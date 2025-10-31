@@ -1,6 +1,6 @@
 import { NativeModules, Platform } from "react-native";
 
-const { RNReactNativeWalletPay, WalletPayModule } = NativeModules;
+const { WalletPayModule } = NativeModules;
 
 export const COUNTRIES = {
   AE: "AE", // United Arab Emirates
@@ -77,13 +77,8 @@ class WalletPay {
 
   async isAvailable() {
     try {
-      if (RNReactNativeWalletPay && RNReactNativeWalletPay.isWalletAvailable) {
-        return await RNReactNativeWalletPay.isWalletAvailable();
-      }
-
       if (Platform.OS === "ios" && WalletPayModule) {
-        const applePay = await WalletPayModule.canMakeApplePayments();
-        return { applePay, googlePay: false };
+        return await WalletPayModule.isWalletAvailable();
       }
 
       return { applePay: false, googlePay: false };
@@ -103,6 +98,81 @@ class WalletPay {
     }
   }
 
+  async canMakeApplePaymentsWithCards(
+    supportedNetworks = this.defaultNetworks
+  ) {
+    try {
+      if (Platform.OS !== "ios") {
+        return false;
+      }
+      return await WalletPayModule.canMakeApplePaymentsWithCards(
+        supportedNetworks
+      );
+    } catch (error) {
+      return false;
+    }
+  }
+
+  // Método para diagnóstico detalhado
+  async getApplePayDiagnostics(supportedNetworks = this.defaultNetworks) {
+    try {
+      if (Platform.OS !== "ios") {
+        return {
+          platform: "android",
+          canMakePayments: false,
+          hasCardsForNetworks: false,
+          available: false,
+          message: "Apple Pay apenas disponível no iOS",
+        };
+      }
+
+      // Verificação básica (dispositivo + qualquer cartão)
+      const canMakePayments = await WalletPayModule.canMakeApplePayments();
+
+      // Verificação específica para redes suportadas
+      let hasCardsForNetworks = false;
+      try {
+        hasCardsForNetworks =
+          await WalletPayModule.canMakeApplePaymentsWithCards(
+            supportedNetworks
+          );
+      } catch (error) {
+        // Se o método específico falhar, use a verificação básica
+        hasCardsForNetworks = canMakePayments;
+      }
+
+      let message = "";
+      if (!canMakePayments) {
+        message =
+          "Apple Pay não disponível (dispositivo não suporta ou sem cartões na Wallet)";
+      } else if (!hasCardsForNetworks) {
+        message = `Apple Pay disponível, mas sem cartões para as redes: ${supportedNetworks.join(
+          ", "
+        )}. Tente com redes diferentes.`;
+      } else {
+        message = "Apple Pay disponível e configurado";
+      }
+
+      return {
+        platform: "ios",
+        canMakePayments,
+        hasCardsForNetworks,
+        available: canMakePayments, // Usar a verificação mais permissiva
+        supportedNetworks,
+        message,
+      };
+    } catch (error) {
+      return {
+        platform: "ios",
+        canMakePayments: false,
+        hasCardsForNetworks: false,
+        available: false,
+        error: error.message,
+        message: "Erro ao verificar Apple Pay: " + error.message,
+      };
+    }
+  }
+
   async requestApplePayment(config) {
     return new Promise(async (resolve, reject) => {
       try {
@@ -117,22 +187,16 @@ class WalletPay {
         }
 
         // Validate required parameters
-        if (
-          !config.merchantIdentifier ||
-          !config.amount ||
-          !config.currencyCode ||
-          !config.countryCode
-        ) {
+        if (!config.amount || !config.currencyCode || !config.countryCode) {
           reject(
             new Error(
-              "Missing required parameters: merchantIdentifier, amount, currencyCode, countryCode"
+              "Missing required parameters: amount, currencyCode, countryCode"
             )
           );
           return;
         }
 
         const paymentRequest = {
-          merchantIdentifier: config.merchantIdentifier,
           supportedNetworks: config.supportedNetworks || this.defaultNetworks,
           countryCode: config.countryCode,
           currencyCode: config.currencyCode,
@@ -171,49 +235,8 @@ class WalletPay {
         throw new Error("No wallet payment methods available");
       }
 
-      let paymentResult = null;
-
-      // Try Apple Pay first on iOS
-      if (Platform.OS === "ios" && availability.applePay && config.applePay) {
-        try {
-          paymentResult = await this.requestApplePayment(config.applePay);
-
-          // Process payment with the provided processor
-          if (paymentProcessor && typeof paymentProcessor === "function") {
-            const processingResult = await paymentProcessor({
-              provider: PAYMENT_PROVIDERS.APPLE_PAY,
-              token: paymentResult.token,
-              config: config.applePay,
-            });
-
-            // Complete the payment
-            await this.completeApplePayment(processingResult.success);
-            return processingResult;
-          }
-
-          // If no processor provided, just return the token
-          await this.completeApplePayment(true);
-          return {
-            success: true,
-            provider: PAYMENT_PROVIDERS.APPLE_PAY,
-            token: paymentResult.token,
-          };
-        } catch (error) {
-          await this.completeApplePayment(false);
-          throw error;
-        }
-      }
-
-      // TODO: Add Google Pay support for Android
-      if (
-        Platform.OS === "android" &&
-        availability.googlePay &&
-        config.googlePay
-      ) {
-        throw new Error("Google Pay support coming soon");
-      }
-
-      throw new Error("No suitable payment method available");
+      // This method is not fully implemented yet
+      throw new Error("processPayment method not fully implemented");
     } catch (error) {
       throw error;
     }

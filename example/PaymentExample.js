@@ -26,6 +26,7 @@ const PaymentExample = () => {
     isChecking,
     checkAvailability,
     processApplePayment,
+    getDiagnostics,
     showPaymentError,
     isApplePayAvailable,
     isAnyPaymentAvailable,
@@ -61,7 +62,6 @@ const PaymentExample = () => {
               token: paymentData.token,
               amount: paymentData.config.amount,
               currency: paymentData.config.currencyCode,
-              merchantId: paymentData.config.merchantIdentifier,
             }),
           }
         );
@@ -87,7 +87,6 @@ const PaymentExample = () => {
 
   // Configuração de pagamento para Apple Pay
   const applePayConfig = {
-    merchantIdentifier: "merchant.com.seuapp", // Substitua pelo seu merchant ID
     amount: 99.99,
     currencyCode: CURRENCIES.USD,
     countryCode: COUNTRIES.US,
@@ -115,6 +114,22 @@ const PaymentExample = () => {
   // Handler para pagamento com Google Pay (futuro)
   const handleGooglePayPress = () => {
     Alert.alert("Em Breve", "Google Pay será implementado em breve!");
+  };
+
+  // Handler para diagnóstico detalhado
+  const handleDiagnostics = async () => {
+    const diagnostics = await getDiagnostics(applePayConfig.supportedNetworks);
+
+    Alert.alert(
+      "Diagnóstico Apple Pay",
+      `Platform: ${diagnostics.platform}
+Pode fazer pagamentos: ${diagnostics.canMakePayments ? "Sim" : "Não"}
+Tem cartões para as redes: ${diagnostics.hasCardsForNetworks ? "Sim" : "Não"}
+Redes testadas: ${diagnostics.supportedNetworks?.join(", ") || "N/A"}
+
+${diagnostics.message}`,
+      [{ text: "OK" }]
+    );
   };
 
   return (
@@ -199,13 +214,27 @@ const PaymentExample = () => {
         </View>
       )}
 
-      <TouchableOpacity
-        style={styles.refreshButton}
-        onPress={checkAvailability}
-        disabled={isChecking}
-      >
-        <Text style={styles.refreshButtonText}>Verificar Novamente</Text>
-      </TouchableOpacity>
+      <View style={styles.buttonRow}>
+        <TouchableOpacity
+          style={[styles.refreshButton, styles.halfButton]}
+          onPress={checkAvailability}
+          disabled={isChecking}
+        >
+          <Text style={styles.refreshButtonText}>Verificar Novamente</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[
+            styles.refreshButton,
+            styles.halfButton,
+            styles.diagnosticButton,
+          ]}
+          onPress={handleDiagnostics}
+          disabled={isChecking}
+        >
+          <Text style={styles.refreshButtonText}>Diagnóstico</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
@@ -324,6 +353,19 @@ const styles = StyleSheet.create({
     color: "white",
     fontSize: 16,
     fontWeight: "600",
+  },
+  buttonRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 20,
+    gap: 10,
+  },
+  halfButton: {
+    flex: 1,
+    marginTop: 0,
+  },
+  diagnosticButton: {
+    backgroundColor: "#FF9500",
   },
 });
 

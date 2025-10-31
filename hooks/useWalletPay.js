@@ -27,6 +27,7 @@ export const useWalletPay = ({
     try {
       const result = await WalletPay.isAvailable();
       setAvailability(result);
+
       return result;
     } catch (error) {
       console.warn("Erro ao verificar disponibilidade:", error);
@@ -34,6 +35,20 @@ export const useWalletPay = ({
       return { applePay: false, googlePay: false };
     } finally {
       setIsChecking(false);
+    }
+  }, []);
+
+  // Método para diagnóstico detalhado quando há problemas
+  const getDiagnostics = useCallback(async (supportedNetworks) => {
+    try {
+      return await WalletPay.getApplePayDiagnostics(supportedNetworks);
+    } catch (error) {
+      return {
+        platform: Platform.OS,
+        available: false,
+        error: error.message,
+        message: "Erro ao obter diagnósticos: " + error.message,
+      };
     }
   }, []);
 
@@ -47,14 +62,28 @@ export const useWalletPay = ({
 
       setIsLoading(true);
       try {
-        const result = await WalletPay.processPayment(
-          { applePay: config },
-          paymentProcessor
-        );
-        onPaymentSuccess?.(result);
-        return { success: true, result };
+        if (paymentProcessor && typeof paymentProcessor === "function") {
+          const result = await WalletPay.processPayment(
+            { applePay: config },
+            paymentProcessor
+          );
+          onPaymentSuccess?.(result);
+          return { success: true, result };
+        } else {
+          const paymentResult = await WalletPay.requestApplePayment(config);
+          await WalletPay.completeApplePayment(true);
+
+          const result = {
+            success: true,
+            provider: "applePay",
+            token: paymentResult.token,
+          };
+          onPaymentSuccess?.(result);
+          return { success: true, result };
+        }
       } catch (error) {
         console.error("Erro no Apple Pay:", error);
+        await WalletPay.completeApplePayment(false);
         onPaymentError?.(error);
         return { success: false, error };
       } finally {
@@ -64,7 +93,7 @@ export const useWalletPay = ({
     [paymentProcessor, onPaymentSuccess, onPaymentError]
   );
 
-  // Processar pagamento com Google Pay (placeholder para implementação futura)
+  // Processar pagamento com Google Pay
   const processGooglePayment = useCallback(
     async (config) => {
       if (Platform.OS !== "android") {
@@ -73,10 +102,21 @@ export const useWalletPay = ({
         return { success: false, error };
       }
 
-      // TODO: Implementar Google Pay
-      const error = new Error("Google Pay ainda não implementado");
-      onPaymentError?.(error);
-      return { success: false, error };
+      setIsLoading(true);
+      try {
+        // Google Pay implementation coming soon
+        const error = new Error(
+          "Google Pay em desenvolvimento - disponível em breve"
+        );
+        onPaymentError?.(error);
+        return { success: false, error };
+      } catch (error) {
+        console.error("Erro no Google Pay:", error);
+        onPaymentError?.(error);
+        return { success: false, error };
+      } finally {
+        setIsLoading(false);
+      }
     },
     [onPaymentError]
   );
@@ -131,14 +171,19 @@ export const useWalletPay = ({
     availability,
     isChecking,
 
-    // Métodos
+    // Métodos de verificação
     checkAvailability,
+    getDiagnostics,
+
+    // Métodos de pagamento
     processPayment,
     processApplePayment,
     processGooglePayment,
+
+    // Métodos de utilidade
     showPaymentError,
 
-    // Utilitários
+    // Atalhos convenientes
     isApplePayAvailable: availability.applePay,
     isGooglePayAvailable: availability.googlePay,
     isAnyPaymentAvailable: availability.applePay || availability.googlePay,
@@ -147,7 +192,7 @@ export const useWalletPay = ({
 
 /**
  * Hook simplificado para pagamentos rápidos
- * @param {Object} defaultConfig - Configuração padrão
+ * @param {Object} defaultConfig - Configuração padrão (sem merchantIdentifier)
  * @returns {Object} Método de pagamento simplificado
  */
 export const useQuickPay = (defaultConfig = {}) => {
@@ -161,6 +206,7 @@ export const useQuickPay = (defaultConfig = {}) => {
         const result = await WalletPay.processPayment(config, processor);
         return result;
       } catch (error) {
+        console.error("Erro no pagamento rápido:", error);
         throw error;
       } finally {
         setIsProcessing(false);

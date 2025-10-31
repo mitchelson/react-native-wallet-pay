@@ -2,22 +2,21 @@
 Pod::Spec.new do |s|
   s.name         = "RNReactNativeWalletPay"
   s.version      = "1.0.0"
-  s.summary      = "RNReactNativeWalletPay"
+  s.summary      = "React Native Wallet Pay - Apple Pay integration"
   s.description  = <<-DESC
-                  RNReactNativeWalletPay
+                  React Native library for Apple Pay and Google Pay integration
                    DESC
-  s.homepage     = ""
+  s.homepage     = "https://github.com/mitchelson/react-native-wallet-pay"
   s.license      = "MIT"
-  # s.license      = { :type => "MIT", :file => "FILE_LICENSE" }
-  s.author             = { "author" => "author@domain.cn" }
-  s.platform     = :ios, "7.0"
-  s.source       = { :git => "https://github.com/author/RNReactNativeWalletPay.git", :tag => "master" }
-  s.source_files  = "RNReactNativeWalletPay/**/*.{h,m}"
+  s.author       = { "Mitchelson" => "mitchelsonps@gmail.com" }
+  s.platform     = :ios, "11.0"  # iOS 11+ required for Apple Pay
+  s.source       = { :git => "https://github.com/mitchelson/react-native-wallet-pay.git", :tag => "master" }
+  s.source_files = "**/*.{h,m,swift}"
   s.requires_arc = true
+  s.swift_version = "5.0"
 
-
-  s.dependency "React"
-  #s.dependency "others"
+  s.dependency "React-Core"
+  s.frameworks = "PassKit", "Foundation"
 
 end
 
