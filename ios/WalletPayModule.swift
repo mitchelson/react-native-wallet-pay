@@ -53,6 +53,14 @@ class WalletPayModule: NSObject {
         return nil
     }
     
+    private func validateMerchantIdentifier(_ merchantId: String) -> Bool {
+        return merchantId.starts(with: "merchant.") && merchantId.count > 9
+    }
+    
+    private func getApplePayCapabilities() -> [String] {
+        return ["3DS", "EMV", "Credit", "Debit"]
+    }
+    
     @objc
     func requestApplePayment(_ paramsJSON: NSDictionary, resolver: @escaping RCTPromiseResolveBlock, rejecter: @escaping RCTPromiseRejectBlock) {
         guard let jsonData = try? JSONSerialization.data(withJSONObject: paramsJSON, options: []),
