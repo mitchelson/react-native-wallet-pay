@@ -68,7 +68,6 @@ export interface PaymentAvailability {
 }
 
 export interface ApplePayConfig {
-  merchantIdentifier: string;
   amount: number;
   currencyCode: string;
   countryCode: string;
