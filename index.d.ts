@@ -60,6 +60,10 @@ export declare const ERROR_CODES: {
   PAYMENT_NOT_AVAILABLE: 'PAYMENT_NOT_AVAILABLE';
   INVALID_PARAMS: 'INVALID_PARAMS';
   PLATFORM_NOT_SUPPORTED: 'PLATFORM_NOT_SUPPORTED';
+  E_MERCHANT_ID_NOT_FOUND: 'E_MERCHANT_ID_NOT_FOUND';
+  E_INVALID_PARAMS: 'E_INVALID_PARAMS';
+  E_PAYMENT_ERROR: 'E_PAYMENT_ERROR';
+  APPLE_PAY_PAYMENT_REJECTED: 'APPLE_PAY_PAYMENT_REJECTED';
 };
 
 export interface PaymentAvailability {
@@ -68,11 +72,22 @@ export interface PaymentAvailability {
 }
 
 export interface ApplePayConfig {
-  amount: number;
+  amount: number | string;
   currencyCode: string;
   countryCode: string;
   label: string;
   supportedNetworks?: string[];
+}
+
+export interface ApplePayDiagnostics {
+  platform: 'ios' | 'android';
+  canMakePayments: boolean;
+  hasCardsForNetworks: boolean;
+  available: boolean;
+  merchantId?: string | null;
+  supportedNetworks?: string[];
+  message: string;
+  error?: string;
 }
 
 export interface GooglePayConfig {
@@ -125,6 +140,7 @@ export interface UseWalletPayReturn {
   availability: PaymentAvailability;
   isChecking: boolean;
   checkAvailability: () => Promise<PaymentAvailability>;
+  getDiagnostics: (supportedNetworks?: string[]) => Promise<ApplePayDiagnostics>;
   processPayment: (config: WalletPayConfig) => Promise<{ success: boolean; result?: any; error?: Error }>;
   processApplePayment: (config: ApplePayConfig) => Promise<{ success: boolean; result?: any; error?: Error }>;
   processGooglePayment: (config: GooglePayConfig) => Promise<{ success: boolean; result?: any; error?: Error }>;
@@ -144,9 +160,12 @@ export declare class WalletPay {
 
   isAvailable(): Promise<PaymentAvailability>;
   canMakeApplePayments(): Promise<boolean>;
+  canMakeApplePaymentsWithCards(supportedNetworks?: string[]): Promise<boolean>;
+  getApplePayDiagnostics(supportedNetworks?: string[]): Promise<ApplePayDiagnostics>;
   requestApplePayment(config: ApplePayConfig): Promise<PaymentResult>;
   completeApplePayment(success?: boolean): Promise<void>;
   processPayment(config: WalletPayConfig, processor?: PaymentProcessor): Promise<PaymentProcessorResult>;
+  testApplePaySetup(): Promise<any>;
 }
 
 export declare function useWalletPay(options?: UseWalletPayOptions): UseWalletPayReturn;
