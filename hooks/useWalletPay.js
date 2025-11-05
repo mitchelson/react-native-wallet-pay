@@ -25,7 +25,8 @@ export const useWalletPay = ({
   const checkAvailability = useCallback(async () => {
     setIsChecking(true);
     try {
-      const result = await WalletPay.isAvailable();
+      // Usar método correto da implementação nativa
+      const result = await WalletPay.isWalletAvailable();
       setAvailability(result);
 
       return result;
@@ -74,47 +75,53 @@ export const useWalletPay = ({
       );
       setIsLoading(true);
       try {
+        // Usar método correto da implementação nativa
+        console.log(
+          "[processApplePayment] Chamando WalletPay.requestApplePayment..."
+        );
+        const paymentResult = await WalletPay.requestApplePayment(config);
+        console.log(
+          "[processApplePayment] requestApplePayment retornou:",
+          paymentResult
+        );
+
         if (paymentProcessor && typeof paymentProcessor === "function") {
           console.log(
-            "[processApplePayment] Usando paymentProcessor personalizado"
+            "[processApplePayment] Executando paymentProcessor personalizado"
           );
 
-          const paymentConfig = { applePay: config };
-          console.log(
-            "[processApplePayment] Configuração enviada para WalletPay.processPayment:",
-            paymentConfig
-          );
-          console.log(
-            "[processApplePayment] PaymentProcessor function:",
-            paymentProcessor
-          );
+          // Estrutura de dados conforme arquitetura gateway-agnostic
+          const paymentData = {
+            provider: "applePay",
+            token: paymentResult.token,
+            config: config,
+          };
 
           console.log(
-            "[processApplePayment] Chamando WalletPay.processPayment..."
+            "[processApplePayment] Dados enviados para processor:",
+            paymentData
           );
-          const result = await WalletPay.processPayment(
-            paymentConfig,
-            paymentProcessor
-          );
+          const processorResult = await paymentProcessor(paymentData);
           console.log(
-            "[processApplePayment] PaymentProcessor retornou resultado:",
-            result
+            "[processApplePayment] PaymentProcessor retornou:",
+            processorResult
           );
-          onPaymentSuccess?.(result);
-          return { success: true, result };
+
+          // Completar Apple Pay baseado no resultado do processor
+          await WalletPay.completeApplePayment(processorResult.success);
+
+          if (processorResult.success) {
+            onPaymentSuccess?.(processorResult);
+            return { success: true, result: processorResult };
+          } else {
+            const error = new Error(
+              processorResult.error || "Erro no processamento"
+            );
+            onPaymentError?.(error);
+            return { success: false, error };
+          }
         } else {
-          console.log(
-            "[processApplePayment] Usando fluxo padrão Apple Pay (sem paymentProcessor)"
-          );
-          console.log(
-            "[processApplePayment] Chamando WalletPay.requestApplePayment..."
-          );
-          const paymentResult = await WalletPay.requestApplePayment(config);
-          console.log(
-            "[processApplePayment] requestApplePayment retornou:",
-            paymentResult
-          );
-
+          // Fluxo padrão sem processor personalizado
           console.log(
             "[processApplePayment] Completando pagamento Apple Pay com sucesso..."
           );
@@ -125,6 +132,8 @@ export const useWalletPay = ({
             success: true,
             provider: "applePay",
             token: paymentResult.token,
+            transactionId:
+              paymentResult.transactionId || paymentResult.token?.transactionId,
           };
           console.log("[processApplePayment] Resultado final:", result);
           onPaymentSuccess?.(result);
@@ -182,25 +191,48 @@ export const useWalletPay = ({
   // Processar pagamento automaticamente (escolhe o método disponível)
   const processPayment = useCallback(
     async (config) => {
+      console.log(
+        "[processPayment] Iniciando processamento com config:",
+        config
+      );
       const currentAvailability = await checkAvailability();
+      console.log("[processPayment] Disponibilidade:", currentAvailability);
 
+      // Apple Pay disponível e configurado
       if (
         Platform.OS === "ios" &&
         currentAvailability.applePay &&
         config.applePay
       ) {
+        console.log("[processPayment] Usando Apple Pay (config.applePay)");
         return await processApplePayment(config.applePay);
       }
 
+      // Google Pay disponível e configurado (futuro)
       if (
         Platform.OS === "android" &&
         currentAvailability.googlePay &&
         config.googlePay
       ) {
+        console.log("[processPayment] Usando Google Pay (config.googlePay)");
         return await processGooglePayment(config.googlePay);
       }
 
-      const error = new Error("Nenhum método de pagamento disponível");
+      // Tentar Apple Pay como fallback se config for compatível
+      if (
+        Platform.OS === "ios" &&
+        currentAvailability.applePay &&
+        config &&
+        (config.amount || config.currencyCode || config.countryCode)
+      ) {
+        console.log("[processPayment] Usando config como Apple Pay fallback");
+        return await processApplePayment(config);
+      }
+
+      const error = new Error(
+        "Nenhum método de pagamento disponível ou configuração inválida"
+      );
+      console.error("[processPayment] Erro:", error.message);
       onPaymentError?.(error);
       return { success: false, error };
     },
@@ -261,10 +293,43 @@ export const useQuickPay = (defaultConfig = {}) => {
       setIsProcessing(true);
       try {
         const config = { ...defaultConfig, ...paymentConfig };
-        const result = await WalletPay.processPayment(config, processor);
-        return result;
+
+        // Usar diretamente a classe WalletPay para pagamentos rápidos
+        if (Platform.OS === "ios") {
+          // Processar Apple Pay diretamente
+          const paymentResult = await WalletPay.requestApplePayment(config);
+
+          if (processor && typeof processor === "function") {
+            const paymentData = {
+              provider: "applePay",
+              token: paymentResult.token,
+              config: config,
+            };
+
+            const result = await processor(paymentData);
+            await WalletPay.completeApplePayment(result.success);
+            return result;
+          } else {
+            await WalletPay.completeApplePayment(true);
+            return {
+              success: true,
+              provider: "applePay",
+              token: paymentResult.token,
+              transactionId:
+                paymentResult.transactionId ||
+                paymentResult.token?.transactionId,
+            };
+          }
+        } else {
+          throw new Error(
+            "Google Pay em desenvolvimento - disponível em breve"
+          );
+        }
       } catch (error) {
         console.error("Erro no pagamento rápido:", error);
+        if (Platform.OS === "ios") {
+          await WalletPay.completeApplePayment(false);
+        }
         throw error;
       } finally {
         setIsProcessing(false);

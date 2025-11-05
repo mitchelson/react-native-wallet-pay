@@ -111,6 +111,7 @@ class WalletPay {
     ];
   }
 
+  // Método principal para verificar disponibilidade (usado pelos hooks)
   async isAvailable() {
     console.log("[WalletPay.isAvailable] Verificando disponibilidade...");
     console.log("[WalletPay.isAvailable] Platform.OS:", Platform.OS);
@@ -138,6 +139,23 @@ class WalletPay {
       return { applePay: false, googlePay: false };
     } catch (error) {
       console.error("[WalletPay.isAvailable] Erro capturado:", error);
+      return { applePay: false, googlePay: false };
+    }
+  }
+
+  // Método específico que chama o módulo nativo diretamente (usado pelos hooks)
+  async isWalletAvailable() {
+    try {
+      if (
+        Platform.OS === "ios" &&
+        WalletPayModule &&
+        WalletPayModule.isWalletAvailable
+      ) {
+        return await WalletPayModule.isWalletAvailable();
+      }
+      return { applePay: false, googlePay: false };
+    } catch (error) {
+      console.error("[WalletPay.isWalletAvailable] Erro:", error);
       return { applePay: false, googlePay: false };
     }
   }
@@ -172,10 +190,22 @@ class WalletPay {
       if (Platform.OS !== "ios") {
         return false;
       }
+
+      if (!WalletPayModule || !WalletPayModule.canMakeApplePaymentsWithCards) {
+        console.warn(
+          "canMakeApplePaymentsWithCards método não disponível, usando fallback"
+        );
+        return await this.canMakeApplePayments();
+      }
+
       return await WalletPayModule.canMakeApplePaymentsWithCards(
         supportedNetworks
       );
     } catch (error) {
+      console.warn(
+        "Erro ao verificar cartões para redes específicas:",
+        error.message
+      );
       return false;
     }
   }
@@ -193,18 +223,38 @@ class WalletPay {
         };
       }
 
-      // Verificação básica (dispositivo + qualquer cartão)
-      const canMakePayments = await WalletPayModule.canMakeApplePayments();
+      if (!WalletPayModule) {
+        return {
+          platform: "ios",
+          canMakePayments: false,
+          hasCardsForNetworks: false,
+          available: false,
+          message: "Módulo WalletPayModule não encontrado",
+        };
+      }
 
-      // Verificação específica para redes suportadas
+      // Usar método de diagnóstico nativo se disponível
+      if (WalletPayModule.getApplePayDiagnostics) {
+        const result = await WalletPayModule.getApplePayDiagnostics(
+          supportedNetworks
+        );
+        return result;
+      }
+
+      // Fallback para verificações manuais
+      const canMakePayments = await WalletPayModule.isApplePayAvailable();
       let hasCardsForNetworks = false;
+
       try {
         hasCardsForNetworks =
           await WalletPayModule.canMakeApplePaymentsWithCards(
             supportedNetworks
           );
       } catch (error) {
-        // Se o método específico falhar, use a verificação básica
+        console.warn(
+          "Erro ao verificar cartões para redes específicas:",
+          error.message
+        );
         hasCardsForNetworks = canMakePayments;
       }
 
@@ -212,7 +262,7 @@ class WalletPay {
       if (!canMakePayments) {
         message =
           "Apple Pay não disponível (dispositivo não suporta ou sem cartões na Wallet)";
-      } else if (!hasCardsForNetworks) {
+      } else if (hasCardsForNetworks === false) {
         message = `Apple Pay disponível, mas sem cartões para as redes: ${supportedNetworks.join(
           ", "
         )}. Tente com redes diferentes.`;
@@ -224,7 +274,7 @@ class WalletPay {
         platform: "ios",
         canMakePayments,
         hasCardsForNetworks,
-        available: canMakePayments, // Usar a verificação mais permissiva
+        available: canMakePayments,
         supportedNetworks,
         message,
       };
@@ -241,44 +291,42 @@ class WalletPay {
   }
 
   async requestApplePayment(config) {
-    return new Promise(async (resolve, reject) => {
-      try {
-        if (Platform.OS !== "ios") {
-          reject(new Error("Apple Pay is only available on iOS"));
-          return;
-        }
-
-        if (!WalletPayModule) {
-          reject(new Error("Apple Pay module not available"));
-          return;
-        }
-
-        // Validate required parameters
-        if (!config.amount || !config.currencyCode || !config.countryCode) {
-          reject(
-            new Error(
-              "Missing required parameters: amount, currencyCode, countryCode"
-            )
-          );
-          return;
-        }
-
-        const paymentRequest = {
-          supportedNetworks: config.supportedNetworks || this.defaultNetworks,
-          countryCode: config.countryCode,
-          currencyCode: config.currencyCode,
-          label: config.label || "Payment",
-          amount: config.amount.toString(),
-        };
-
-        const result = await WalletPayModule.requestApplePayment(
-          paymentRequest
-        );
-        resolve(result);
-      } catch (error) {
-        reject(error);
+    try {
+      if (Platform.OS !== "ios") {
+        throw new Error("Apple Pay is only available on iOS");
       }
-    });
+
+      if (!WalletPayModule) {
+        throw new Error("Apple Pay module not available");
+      }
+
+      // Validate required parameters
+      if (!config.amount || !config.currencyCode || !config.countryCode) {
+        throw new Error(
+          "Missing required parameters: amount, currencyCode, countryCode"
+        );
+      }
+
+      const paymentRequest = {
+        supportedNetworks: config.supportedNetworks || this.defaultNetworks,
+        countryCode: config.countryCode,
+        currencyCode: config.currencyCode,
+        label: config.label || "Payment",
+        amount: config.amount.toString(),
+      };
+
+      console.log(
+        "[WalletPay.requestApplePayment] Enviando request:",
+        paymentRequest
+      );
+      const result = await WalletPayModule.requestApplePayment(paymentRequest);
+      console.log("[WalletPay.requestApplePayment] Resultado:", result);
+
+      return result;
+    } catch (error) {
+      console.error("[WalletPay.requestApplePayment] Erro:", error);
+      throw error;
+    }
   }
 
   // Complete Apple Pay payment
