@@ -1,6 +1,6 @@
 {
   "name": "react-native-wallet-pay",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Biblioteca agnóstica para pagamentos com Apple Pay e Google Pay em React Native, compatível com qualquer gateway",
   "main": "index.js",
   "types": "index.d.ts",
@@ -51,7 +51,9 @@
     "hooks/",
     "ios/",
     "android/",
+    "react-native.config.js",
     "README.md",
     "LICENSE"
-  ]
+  ],
+  "react-native": "react-native.config.js"
 }
