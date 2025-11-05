@@ -1,13 +1,13 @@
-#import "PaymentModule.h"
+#import "RNReactNativeWalletPay.h"
 #import <React/RCTLog.h>
 #import <PassKit/PassKit.h>
 
-@interface PaymentModule()
+@interface RNReactNativeWalletPay()
 @property (nonatomic, strong) NSString *merchantId;
 @property (nonatomic, strong) NSArray<NSString *> *supportedNetworks;
 @end
         
-@implementation PaymentModule
+@implementation RNReactNativeWalletPay
 
 // Export module with explicit name - aligned with library architecture
 RCT_EXPORT_MODULE(WalletPayModule);
