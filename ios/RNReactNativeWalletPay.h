@@ -1,10 +1,10 @@
-//
-//  RNReactNativeWalletPay.h
-//  React Native Wallet Pay
-//
-//  This header is no longer needed as all functionality 
-//  has been moved to WalletPayModule.swift
-//
+#import <React/RCTBridgeModule.h>
+#import <React/RCTEventEmitter.h>
+#import <PassKit/PassKit.h>
 
-// This file is kept for compatibility but is no longer used
-  
+@interface PaymentModule : RCTEventEmitter <RCTBridgeModule, PKPaymentAuthorizationViewControllerDelegate>
+
+@property (nonatomic, strong) RCTPromiseResolveBlock paymentResolve;
+@property (nonatomic, strong) RCTPromiseRejectBlock paymentReject;
+
+@end

@@ -1,6 +1,42 @@
 import { NativeModules, Platform } from "react-native";
 
-const { WalletPayModule } = NativeModules;
+// Debug: Log all available native modules to help identify the correct module name
+console.log(
+  "[WalletPay Debug] All NativeModules keys:",
+  Object.keys(NativeModules)
+);
+
+// Check each possible module name and log what's found
+const moduleNames = [
+  "WalletPayModule",
+  "RNReactNativeWalletPay",
+  "RNReactNativeWalletPayModule",
+  "RNWalletPay",
+  "WalletPay",
+];
+moduleNames.forEach((name) => {
+  const module = NativeModules[name];
+  if (module) {
+    console.log(
+      `[WalletPay Debug] Found module '${name}':`,
+      Object.keys(module)
+    );
+  }
+});
+
+const WalletPayModule =
+  NativeModules.WalletPayModule ||
+  NativeModules.RNReactNativeWalletPay ||
+  NativeModules.RNReactNativeWalletPayModule ||
+  NativeModules.RNWalletPay ||
+  NativeModules.WalletPay ||
+  null;
+
+console.log(
+  "[WalletPay Debug] Final WalletPayModule:",
+  !!WalletPayModule,
+  WalletPayModule ? Object.keys(WalletPayModule) : "null"
+);
 
 export const COUNTRIES = {
   AE: "AE", // United Arab Emirates
@@ -76,24 +112,55 @@ class WalletPay {
   }
 
   async isAvailable() {
+    console.log("[WalletPay.isAvailable] Verificando disponibilidade...");
+    console.log("[WalletPay.isAvailable] Platform.OS:", Platform.OS);
+    console.log(
+      "[WalletPay.isAvailable] WalletPayModule exists:",
+      !!WalletPayModule
+    );
+
     try {
       if (Platform.OS === "ios" && WalletPayModule) {
-        return await WalletPayModule.isWalletAvailable();
+        console.log(
+          "[WalletPay.isAvailable] Chamando WalletPayModule.isWalletAvailable()..."
+        );
+        const result = await WalletPayModule.isWalletAvailable();
+        console.log(
+          "[WalletPay.isAvailable] Resultado do módulo nativo:",
+          result
+        );
+        return result;
       }
 
+      console.log(
+        "[WalletPay.isAvailable] Plataforma não é iOS ou módulo não disponível"
+      );
       return { applePay: false, googlePay: false };
     } catch (error) {
+      console.error("[WalletPay.isAvailable] Erro capturado:", error);
       return { applePay: false, googlePay: false };
     }
   }
 
   async canMakeApplePayments() {
+    console.log(
+      "[WalletPay.canMakeApplePayments] Verificando se pode fazer pagamentos Apple Pay..."
+    );
     try {
       if (Platform.OS !== "ios") {
+        console.log(
+          "[WalletPay.canMakeApplePayments] Não é iOS, retornando false"
+        );
         return false;
       }
-      return await WalletPayModule.canMakeApplePayments();
+      console.log(
+        "[WalletPay.canMakeApplePayments] Chamando WalletPayModule.canMakeApplePayments()..."
+      );
+      const result = await WalletPayModule.canMakeApplePayments();
+      console.log("[WalletPay.canMakeApplePayments] Resultado:", result);
+      return result;
     } catch (error) {
+      console.error("[WalletPay.canMakeApplePayments] Erro:", error);
       return false;
     }
   }
@@ -225,19 +292,212 @@ class WalletPay {
     }
   }
 
+  // Test method for debugging
+  async testApplePaySetup() {
+    console.log(
+      "[WalletPay.testApplePaySetup] Testando configuração Apple Pay..."
+    );
+    try {
+      console.log("[WalletPay.testApplePaySetup] 1. Verificando plataforma...");
+      console.log("[WalletPay.testApplePaySetup] Platform.OS:", Platform.OS);
+
+      console.log(
+        "[WalletPay.testApplePaySetup] 2. Verificando módulo nativo..."
+      );
+      console.log(
+        "[WalletPay.testApplePaySetup] WalletPayModule exists:",
+        !!WalletPayModule
+      );
+
+      if (Platform.OS === "ios" && WalletPayModule) {
+        console.log(
+          "[WalletPay.testApplePaySetup] 3. Testando canMakeApplePayments..."
+        );
+        const canMake = await WalletPayModule.canMakeApplePayments();
+        console.log(
+          "[WalletPay.testApplePaySetup] canMakeApplePayments:",
+          canMake
+        );
+
+        console.log(
+          "[WalletPay.testApplePaySetup] 4. Testando isWalletAvailable..."
+        );
+        const available = await WalletPayModule.isWalletAvailable();
+        console.log(
+          "[WalletPay.testApplePaySetup] isWalletAvailable:",
+          available
+        );
+
+        console.log(
+          "[WalletPay.testApplePaySetup] 5. Testando diagnósticos..."
+        );
+        const diagnostics = await this.getApplePayDiagnostics();
+        console.log("[WalletPay.testApplePaySetup] diagnostics:", diagnostics);
+
+        return {
+          platform: Platform.OS,
+          moduleExists: !!WalletPayModule,
+          canMakePayments: canMake,
+          walletAvailable: available,
+          diagnostics,
+        };
+      }
+
+      return {
+        platform: Platform.OS,
+        moduleExists: !!WalletPayModule,
+        error: "Não é iOS ou módulo não disponível",
+      };
+    } catch (error) {
+      console.error("[WalletPay.testApplePaySetup] Erro:", error);
+      return {
+        platform: Platform.OS,
+        moduleExists: !!WalletPayModule,
+        error: error.message,
+      };
+    }
+  }
+
   // Generic payment method that works with any gateway
   async processPayment(config, paymentProcessor) {
+    console.log(
+      "[WalletPay.processPayment] Iniciando processamento com config:",
+      config
+    );
+    console.log(
+      "[WalletPay.processPayment] PaymentProcessor:",
+      paymentProcessor
+    );
+
     try {
+      console.log("[WalletPay.processPayment] Verificando disponibilidade...");
       // Check availability
       const availability = await this.isAvailable();
+      console.log("[WalletPay.processPayment] Disponibilidade:", availability);
 
       if (!availability.applePay && !availability.googlePay) {
+        console.log(
+          "[WalletPay.processPayment] Nenhum método de pagamento disponível"
+        );
+
+        // Obter diagnósticos detalhados para Apple Pay
+        if (Platform.OS === "ios") {
+          console.log(
+            "[WalletPay.processPayment] Obtendo diagnósticos Apple Pay..."
+          );
+          try {
+            const diagnostics = await this.getApplePayDiagnostics();
+            console.log(
+              "[WalletPay.processPayment] Diagnósticos Apple Pay:",
+              diagnostics
+            );
+          } catch (diagError) {
+            console.warn(
+              "[WalletPay.processPayment] Erro ao obter diagnósticos:",
+              diagError
+            );
+          }
+        }
+
         throw new Error("No wallet payment methods available");
       }
 
-      // This method is not fully implemented yet
-      throw new Error("processPayment method not fully implemented");
+      let paymentResult;
+      let provider;
+      let paymentConfig;
+
+      // Determine which payment method to use based on platform and availability
+      if (Platform.OS === "ios" && availability.applePay && config.applePay) {
+        console.log("[WalletPay.processPayment] Usando Apple Pay");
+        provider = "applePay";
+        paymentConfig = config.applePay;
+
+        console.log(
+          "[WalletPay.processPayment] Chamando requestApplePayment..."
+        );
+        paymentResult = await this.requestApplePayment(paymentConfig);
+        console.log(
+          "[WalletPay.processPayment] Apple Pay retornou:",
+          paymentResult
+        );
+      } else if (
+        Platform.OS === "android" &&
+        availability.googlePay &&
+        config.googlePay
+      ) {
+        console.log(
+          "[WalletPay.processPayment] Google Pay ainda não implementado"
+        );
+        throw new Error("Google Pay not yet implemented");
+      } else {
+        console.log(
+          "[WalletPay.processPayment] Nenhuma configuração compatível encontrada"
+        );
+        throw new Error("No compatible payment configuration found");
+      }
+
+      // Call the payment processor if provided
+      let processorResult;
+      if (paymentProcessor && typeof paymentProcessor === "function") {
+        console.log("[WalletPay.processPayment] Chamando paymentProcessor...");
+
+        const paymentData = {
+          provider,
+          token: paymentResult.token,
+          config: paymentConfig,
+        };
+
+        console.log(
+          "[WalletPay.processPayment] Dados enviados para processor:",
+          paymentData
+        );
+        processorResult = await paymentProcessor(paymentData);
+        console.log(
+          "[WalletPay.processPayment] PaymentProcessor retornou:",
+          processorResult
+        );
+      } else {
+        console.log(
+          "[WalletPay.processPayment] Nenhum processor fornecido, usando resultado direto"
+        );
+        processorResult = {
+          success: true,
+          transactionId: paymentResult.transactionId || "direct_payment",
+        };
+      }
+
+      // Complete the payment based on processor result
+      if (provider === "applePay") {
+        console.log(
+          "[WalletPay.processPayment] Completando Apple Pay com sucesso:",
+          processorResult.success
+        );
+        await this.completeApplePayment(processorResult.success);
+      }
+
+      console.log(
+        "[WalletPay.processPayment] Processo finalizado com sucesso:",
+        processorResult
+      );
+      return processorResult;
     } catch (error) {
+      console.error("[WalletPay.processPayment] Erro capturado:", error);
+
+      // Try to complete payment as failed if it was started
+      try {
+        if (Platform.OS === "ios") {
+          console.log(
+            "[WalletPay.processPayment] Completando Apple Pay como falha..."
+          );
+          await this.completeApplePayment(false);
+        }
+      } catch (completeError) {
+        console.warn(
+          "[WalletPay.processPayment] Erro ao completar pagamento como falha:",
+          completeError
+        );
+      }
+
       throw error;
     }
   }

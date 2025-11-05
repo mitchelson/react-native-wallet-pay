@@ -54,39 +54,97 @@ export const useWalletPay = ({
 
   const processApplePayment = useCallback(
     async (config) => {
+      console.log(
+        "[processApplePayment] Iniciando processamento Apple Pay com config:",
+        config
+      );
+
       if (Platform.OS !== "ios") {
+        console.log(
+          "[processApplePayment] Erro: Plataforma não é iOS, plataforma atual:",
+          Platform.OS
+        );
         const error = new Error("Apple Pay disponível apenas no iOS");
         onPaymentError?.(error);
         return { success: false, error };
       }
 
+      console.log(
+        "[processApplePayment] Plataforma iOS confirmada, definindo loading state"
+      );
       setIsLoading(true);
       try {
         if (paymentProcessor && typeof paymentProcessor === "function") {
-          const result = await WalletPay.processPayment(
-            { applePay: config },
+          console.log(
+            "[processApplePayment] Usando paymentProcessor personalizado"
+          );
+
+          const paymentConfig = { applePay: config };
+          console.log(
+            "[processApplePayment] Configuração enviada para WalletPay.processPayment:",
+            paymentConfig
+          );
+          console.log(
+            "[processApplePayment] PaymentProcessor function:",
             paymentProcessor
+          );
+
+          console.log(
+            "[processApplePayment] Chamando WalletPay.processPayment..."
+          );
+          const result = await WalletPay.processPayment(
+            paymentConfig,
+            paymentProcessor
+          );
+          console.log(
+            "[processApplePayment] PaymentProcessor retornou resultado:",
+            result
           );
           onPaymentSuccess?.(result);
           return { success: true, result };
         } else {
+          console.log(
+            "[processApplePayment] Usando fluxo padrão Apple Pay (sem paymentProcessor)"
+          );
+          console.log(
+            "[processApplePayment] Chamando WalletPay.requestApplePayment..."
+          );
           const paymentResult = await WalletPay.requestApplePayment(config);
+          console.log(
+            "[processApplePayment] requestApplePayment retornou:",
+            paymentResult
+          );
+
+          console.log(
+            "[processApplePayment] Completando pagamento Apple Pay com sucesso..."
+          );
           await WalletPay.completeApplePayment(true);
+          console.log("[processApplePayment] Pagamento Apple Pay completado");
 
           const result = {
             success: true,
             provider: "applePay",
             token: paymentResult.token,
           };
+          console.log("[processApplePayment] Resultado final:", result);
           onPaymentSuccess?.(result);
           return { success: true, result };
         }
       } catch (error) {
-        console.error("Erro no Apple Pay:", error);
+        console.error("[processApplePayment] Erro capturado:", error);
+        console.log(
+          "[processApplePayment] Completando pagamento Apple Pay com falha..."
+        );
         await WalletPay.completeApplePayment(false);
+        console.log(
+          "[processApplePayment] Pagamento Apple Pay marcado como falhado"
+        );
         onPaymentError?.(error);
         return { success: false, error };
       } finally {
+        console.log(
+          "[processApplePayment] Finalizando processamento, removendo loading state"
+        );
         setIsLoading(false);
       }
     },
