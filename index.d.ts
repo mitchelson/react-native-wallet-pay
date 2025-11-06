@@ -122,7 +122,9 @@ export interface PaymentProcessorResult {
   error?: string;
 }
 
-export type PaymentProcessor = (data: PaymentProcessorData) => Promise<PaymentProcessorResult>;
+export type PaymentProcessor = (
+  data: PaymentProcessorData
+) => Promise<PaymentProcessorResult>;
 
 export interface WalletPayConfig {
   applePay?: ApplePayConfig;
@@ -140,10 +142,18 @@ export interface UseWalletPayReturn {
   availability: PaymentAvailability;
   isChecking: boolean;
   checkAvailability: () => Promise<PaymentAvailability>;
-  getDiagnostics: (supportedNetworks?: string[]) => Promise<ApplePayDiagnostics>;
-  processPayment: (config: WalletPayConfig) => Promise<{ success: boolean; result?: any; error?: Error }>;
-  processApplePayment: (config: ApplePayConfig) => Promise<{ success: boolean; result?: any; error?: Error }>;
-  processGooglePayment: (config: GooglePayConfig) => Promise<{ success: boolean; result?: any; error?: Error }>;
+  getDiagnostics: (
+    supportedNetworks?: string[]
+  ) => Promise<ApplePayDiagnostics>;
+  processPayment: (
+    config: WalletPayConfig
+  ) => Promise<{ success: boolean; result?: any; error?: Error }>;
+  processApplePayment: (
+    config: ApplePayConfig
+  ) => Promise<{ success: boolean; result?: any; error?: Error }>;
+  processGooglePayment: (
+    config: GooglePayConfig
+  ) => Promise<{ success: boolean; result?: any; error?: Error }>;
   showPaymentError: (title?: string, message?: string) => void;
   isApplePayAvailable: boolean;
   isGooglePayAvailable: boolean;
@@ -151,7 +161,10 @@ export interface UseWalletPayReturn {
 }
 
 export interface UseQuickPayReturn {
-  quickPay: (config: Partial<WalletPayConfig>, processor?: PaymentProcessor) => Promise<PaymentProcessorResult>;
+  quickPay: (
+    config: Partial<WalletPayConfig>,
+    processor?: PaymentProcessor
+  ) => Promise<PaymentProcessorResult>;
   isProcessing: boolean;
 }
 
@@ -161,16 +174,25 @@ export declare class WalletPay {
   isAvailable(): Promise<PaymentAvailability>;
   canMakeApplePayments(): Promise<boolean>;
   canMakeApplePaymentsWithCards(supportedNetworks?: string[]): Promise<boolean>;
-  getApplePayDiagnostics(supportedNetworks?: string[]): Promise<ApplePayDiagnostics>;
+  getApplePayDiagnostics(
+    supportedNetworks?: string[]
+  ): Promise<ApplePayDiagnostics>;
   requestApplePayment(config: ApplePayConfig): Promise<PaymentResult>;
   completeApplePayment(success?: boolean): Promise<void>;
-  processPayment(config: WalletPayConfig, processor?: PaymentProcessor): Promise<PaymentProcessorResult>;
+  processPayment(
+    config: WalletPayConfig,
+    processor?: PaymentProcessor
+  ): Promise<PaymentProcessorResult>;
   testApplePaySetup(): Promise<any>;
 }
 
-export declare function useWalletPay(options?: UseWalletPayOptions): UseWalletPayReturn;
+export declare function useWalletPay(
+  options?: UseWalletPayOptions
+): UseWalletPayReturn;
 
-export declare function useQuickPay(defaultConfig?: Partial<WalletPayConfig>): UseQuickPayReturn;
+export declare function useQuickPay(
+  defaultConfig?: Partial<WalletPayConfig>
+): UseQuickPayReturn;
 
 declare const walletPay: WalletPay;
 export default walletPay;

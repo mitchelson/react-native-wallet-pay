@@ -17,7 +17,7 @@ import {
   COUNTRIES,
   CURRENCIES,
   PAYMENT_NETWORKS,
-} from "../hooks/useWalletPay";
+} from "../index";
 
 const PaymentExample = () => {
   const {

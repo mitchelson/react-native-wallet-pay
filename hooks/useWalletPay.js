@@ -1,6 +1,14 @@
 import { useState, useCallback } from "react";
-import { Alert, Platform } from "react-native";
-import WalletPay from "../index";
+import { Alert, Platform, NativeModules } from "react-native";
+
+// Importa o módulo nativo diretamente para evitar dependência circular
+const WalletPayModule =
+  NativeModules.WalletPayModule ||
+  NativeModules.RNReactNativeWalletPay ||
+  NativeModules.RNReactNativeWalletPayModule ||
+  NativeModules.RNWalletPay ||
+  NativeModules.WalletPay ||
+  null;
 
 /**
  * Hook personalizado para pagamentos com carteira digital
@@ -25,11 +33,16 @@ export const useWalletPay = ({
   const checkAvailability = useCallback(async () => {
     setIsChecking(true);
     try {
-      // Usar método correto da implementação nativa
-      const result = await WalletPay.isWalletAvailable();
-      setAvailability(result);
-
-      return result;
+      // Usar módulo nativo diretamente para evitar dependência circular
+      if (Platform.OS === "ios" && WalletPayModule?.isWalletAvailable) {
+        const result = await WalletPayModule.isWalletAvailable();
+        setAvailability(result);
+        return result;
+      } else {
+        const result = { applePay: false, googlePay: false };
+        setAvailability(result);
+        return result;
+      }
     } catch (error) {
       console.warn("Erro ao verificar disponibilidade:", error);
       setAvailability({ applePay: false, googlePay: false });
@@ -42,7 +55,14 @@ export const useWalletPay = ({
   // Método para diagnóstico detalhado quando há problemas
   const getDiagnostics = useCallback(async (supportedNetworks) => {
     try {
-      return await WalletPay.getApplePayDiagnostics(supportedNetworks);
+      if (Platform.OS === "ios" && WalletPayModule?.getApplePayDiagnostics) {
+        return await WalletPayModule.getApplePayDiagnostics(supportedNetworks);
+      }
+      return {
+        platform: Platform.OS,
+        available: false,
+        message: "Platform not supported or module not available",
+      };
     } catch (error) {
       return {
         platform: Platform.OS,
@@ -75,11 +95,16 @@ export const useWalletPay = ({
       );
       setIsLoading(true);
       try {
-        // Usar método correto da implementação nativa
+        // Usar módulo nativo diretamente para evitar dependência circular
         console.log(
-          "[processApplePayment] Chamando WalletPay.requestApplePayment..."
+          "[processApplePayment] Chamando WalletPayModule.requestApplePayment..."
         );
-        const paymentResult = await WalletPay.requestApplePayment(config);
+
+        if (!WalletPayModule?.requestApplePayment) {
+          throw new Error("Módulo nativo WalletPay não disponível");
+        }
+
+        const paymentResult = await WalletPayModule.requestApplePayment(config);
         console.log(
           "[processApplePayment] requestApplePayment retornou:",
           paymentResult
@@ -108,7 +133,9 @@ export const useWalletPay = ({
           );
 
           // Completar Apple Pay baseado no resultado do processor
-          await WalletPay.completeApplePayment(processorResult.success);
+          if (WalletPayModule?.completeApplePayment) {
+            await WalletPayModule.completeApplePayment(processorResult.success);
+          }
 
           if (processorResult.success) {
             onPaymentSuccess?.(processorResult);
@@ -125,7 +152,9 @@ export const useWalletPay = ({
           console.log(
             "[processApplePayment] Completando pagamento Apple Pay com sucesso..."
           );
-          await WalletPay.completeApplePayment(true);
+          if (WalletPayModule?.completeApplePayment) {
+            await WalletPayModule.completeApplePayment(true);
+          }
           console.log("[processApplePayment] Pagamento Apple Pay completado");
 
           const result = {
@@ -144,7 +173,9 @@ export const useWalletPay = ({
         console.log(
           "[processApplePayment] Completando pagamento Apple Pay com falha..."
         );
-        await WalletPay.completeApplePayment(false);
+        if (WalletPayModule?.completeApplePayment) {
+          await WalletPayModule.completeApplePayment(false);
+        }
         console.log(
           "[processApplePayment] Pagamento Apple Pay marcado como falhado"
         );
@@ -294,10 +325,17 @@ export const useQuickPay = (defaultConfig = {}) => {
       try {
         const config = { ...defaultConfig, ...paymentConfig };
 
-        // Usar diretamente a classe WalletPay para pagamentos rápidos
+        // Usar módulo nativo diretamente para pagamentos rápidos
         if (Platform.OS === "ios") {
+          // Verificar se o módulo nativo está disponível
+          if (!WalletPayModule?.requestApplePayment) {
+            throw new Error("Módulo nativo WalletPay não disponível");
+          }
+
           // Processar Apple Pay diretamente
-          const paymentResult = await WalletPay.requestApplePayment(config);
+          const paymentResult = await WalletPayModule.requestApplePayment(
+            config
+          );
 
           if (processor && typeof processor === "function") {
             const paymentData = {
@@ -307,10 +345,14 @@ export const useQuickPay = (defaultConfig = {}) => {
             };
 
             const result = await processor(paymentData);
-            await WalletPay.completeApplePayment(result.success);
+            if (WalletPayModule?.completeApplePayment) {
+              await WalletPayModule.completeApplePayment(result.success);
+            }
             return result;
           } else {
-            await WalletPay.completeApplePayment(true);
+            if (WalletPayModule?.completeApplePayment) {
+              await WalletPayModule.completeApplePayment(true);
+            }
             return {
               success: true,
               provider: "applePay",
@@ -327,8 +369,8 @@ export const useQuickPay = (defaultConfig = {}) => {
         }
       } catch (error) {
         console.error("Erro no pagamento rápido:", error);
-        if (Platform.OS === "ios") {
-          await WalletPay.completeApplePayment(false);
+        if (Platform.OS === "ios" && WalletPayModule?.completeApplePayment) {
+          await WalletPayModule.completeApplePayment(false);
         }
         throw error;
       } finally {
