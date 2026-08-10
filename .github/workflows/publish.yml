@@ -12,6 +12,7 @@ on:
         required: false
         type: string
 
+# id-token: write is required for npm Trusted Publishing (OIDC)
 permissions:
   contents: read
   id-token: write
@@ -33,9 +34,14 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: yarn
+          # Trusted Publishing needs a recent npm CLI (>= 11.5.1)
+          node-version: 24
           registry-url: https://registry.npmjs.org
+          # Never cache package manager state in release builds
+          cache: yarn
+
+      - name: Upgrade npm for Trusted Publishing / OIDC
+        run: npm install -g npm@latest
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile
@@ -65,7 +71,6 @@ jobs:
           fi
           echo "Publishing react-native-wallet-pay@$PKG_VERSION"
 
+      # No NPM_TOKEN — auth comes from GitHub OIDC via npm Trusted Publishing
       - name: Publish to npm
         run: npm publish --access public --provenance
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

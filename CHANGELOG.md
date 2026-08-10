@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 ## [Unreleased]
 
 ### Added
-- GitHub Actions workflow to publish to npm on GitHub Release (`NPM_TOKEN` secret)
+- GitHub Actions workflow to publish to npm on GitHub Release via **Trusted Publishing** (OIDC, no `NPM_TOKEN`)
 
 ## [1.1.0] - 2026-08-10
 

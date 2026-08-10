@@ -165,31 +165,38 @@ yarn typecheck
 yarn test
 ```
 
-## Publicação no npm (GitHub Actions)
+## Publicação no npm (Trusted Publishing)
 
-O workflow [`.github/workflows/publish.yml`](.github/workflows/publish.yml) publica automaticamente quando um **GitHub Release** é criado (ou via *workflow_dispatch*).
+O workflow [`.github/workflows/publish.yml`](.github/workflows/publish.yml) publica via **npm Trusted Publishing** (OIDC) — sem `NPM_TOKEN` / Automation token.
 
-### Setup (uma vez)
+### Setup (uma vez) no npmjs.com
 
-1. No [npmjs.com](https://www.npmjs.com/), crie um **Access Token** (Automation) com permissão de publish no pacote `react-native-wallet-pay`
-2. No GitHub: **Settings → Secrets and variables → Actions → New repository secret**
-   - Name: `NPM_TOKEN`
-   - Value: o token do npm
+1. Abra o pacote → **Settings** → **Trusted Publisher**
+2. Provider: **GitHub Actions**
+3. Preencha:
+   - **Organization or user:** `mitchelson`
+   - **Repository:** `react-native-wallet-pay`
+   - **Workflow filename:** `publish.yml` (só o nome do arquivo)
+   - **Environment name:** deixe vazio (não usamos GitHub Environment)
+4. Allowed action: **npm publish**
+5. Salve
+
+Não é necessário criar Access Token nem secret no GitHub.
 
 ### Publicar uma versão
 
 1. Atualize `version` no `package.json` e o `CHANGELOG.md` na `master`
-2. Crie e envie a tag (o nome deve bater com a versão, com ou sem `v`):
+2. Crie e envie a tag:
 
 ```bash
 git tag v1.1.0
 git push origin v1.1.0
 ```
 
-3. No GitHub: **Releases → Draft a new release** → escolha a tag `v1.1.0` → **Publish release**
-4. O Action roda lint/typecheck/test/build e executa `npm publish --access public --provenance`
+3. No GitHub: **Releases → Draft a new release** → tag `v1.1.0` → **Publish release**
+4. O Action autentica via OIDC, gera provenance e publica
 
-A versão no `package.json` precisa coincidir com a tag do release (`v1.1.0` ↔ `1.1.0`); caso contrário o job falha de propósito.
+A versão no `package.json` precisa coincidir com a tag (`v1.1.0` ↔ `1.1.0`).
 
 ## Licença
 

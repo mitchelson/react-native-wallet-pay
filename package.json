@@ -48,6 +48,10 @@
   "bugs": {
     "url": "https://github.com/mitchelson/react-native-wallet-pay/issues"
   },
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
   "peerDependencies": {
     "react": ">=16.8.0",
     "react-native": ">=0.60.0"
