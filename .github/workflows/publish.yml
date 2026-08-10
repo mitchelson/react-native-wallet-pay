@@ -1,0 +1,71 @@
+name: Publish to npm
+
+on:
+  # Prefer publishing from a GitHub Release (keeps npm version intentional)
+  release:
+    types: [published]
+  # Manual fallback from the Actions tab
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Optional git tag to checkout before publish (e.g. v1.1.0). Leave empty to use the current ref.'
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.event.release.tag_name || github.sha }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+          registry-url: https://registry.npmjs.org
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Build
+        run: yarn build
+
+      - name: Lint
+        run: yarn lint
+
+      - name: Typecheck
+        run: yarn typecheck
+
+      - name: Test
+        run: yarn test --ci --coverage=false
+
+      - name: Verify package version matches release tag
+        if: github.event_name == 'release'
+        run: |
+          set -euo pipefail
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          TAG="${{ github.event.release.tag_name }}"
+          TAG_VERSION="${TAG#v}"
+          if [ "$PKG_VERSION" != "$TAG_VERSION" ]; then
+            echo "package.json version ($PKG_VERSION) does not match release tag ($TAG)"
+            exit 1
+          fi
+          echo "Publishing react-native-wallet-pay@$PKG_VERSION"
+
+      - name: Publish to npm
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
