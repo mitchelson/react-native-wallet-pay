@@ -8,6 +8,10 @@
 node_modules/
 npm-debug.log
 yarn-error.log
+coverage/
+
+# TypeScript build info (compiled output in lib/ is published)
+*.tsbuildinfo
   
 
 # Xcode

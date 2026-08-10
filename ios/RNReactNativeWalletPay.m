@@ -166,6 +166,17 @@ RCT_EXPORT_METHOD(canMakePayments:(RCTPromiseResolveBlock)resolve
     }
 }
 
+// Alias used by the JS API (canonical name alongside canMakePayments)
+RCT_EXPORT_METHOD(canMakeApplePayments:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject) {
+    @try {
+        BOOL canMake = [PKPaymentAuthorizationViewController canMakePayments];
+        resolve(@(canMake));
+    } @catch (NSException *exception) {
+        reject(@"CAN_MAKE_APPLE_PAYMENTS_ERROR", exception.reason, nil);
+    }
+}
+
 // NEW: Check if Apple Pay can make payments with specific networks
 RCT_EXPORT_METHOD(canMakeApplePaymentsWithCards:(NSArray<NSString *> *)supportedNetworkStrings
                   resolver:(RCTPromiseResolveBlock)resolve

@@ -1,9 +1,9 @@
 /**
  * Exemplo de componente React Native usando a biblioteca Wallet Pay
- * Demonstra integração agnóstica com diferentes gateways
+ * Demonstra integração agnóstica com diferentes gateways (Apple Pay + Google Pay)
  */
 
-import React, { useEffect } from "react";
+import React, { useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,13 +11,14 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
-} from "react-native";
+  Platform,
+} from 'react-native';
 import {
   useWalletPay,
   COUNTRIES,
   CURRENCIES,
   PAYMENT_NETWORKS,
-} from "../index";
+} from '../lib';
 
 const PaymentExample = () => {
   const {
@@ -25,72 +26,59 @@ const PaymentExample = () => {
     availability,
     isChecking,
     checkAvailability,
+    processPayment,
     processApplePayment,
+    processGooglePayment,
     getDiagnostics,
     showPaymentError,
     isApplePayAvailable,
+    isGooglePayAvailable,
     isAnyPaymentAvailable,
   } = useWalletPay({
     onPaymentSuccess: (result) => {
-      console.log("Pagamento bem-sucedido:", result);
-      Alert.alert("Sucesso!", "Pagamento processado com sucesso");
+      Alert.alert('Sucesso!', 'Pagamento processado com sucesso');
     },
     onPaymentError: (error) => {
-      console.error("Erro no pagamento:", error);
       Alert.alert(
-        "Erro",
-        error.message || "Falha no processamento do pagamento"
+        'Erro',
+        error.message || 'Falha no processamento do pagamento'
       );
     },
-    // Gateway agnóstico - pode ser Stripe, PayPal, PagSeguro, etc.
     paymentProcessor: async (paymentData) => {
-      // Exemplo de integração com gateway personalizado
-      console.log("Processando pagamento com gateway:", paymentData);
+      // Substitua pela chamada ao seu backend / gateway
+      const response = await fetch('https://seu-backend.com/process-payment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: 'Bearer seu-token',
+        },
+        body: JSON.stringify({
+          provider: paymentData.provider,
+          token: paymentData.token,
+          amount: paymentData.config.amount,
+          currency: paymentData.config.currencyCode,
+        }),
+      });
 
-      // Simular chamada para seu backend
-      try {
-        const response = await fetch(
-          "https://seu-backend.com/process-payment",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: "Bearer seu-token",
-            },
-            body: JSON.stringify({
-              provider: paymentData.provider, // 'applePay' or 'googlePay'
-              token: paymentData.token,
-              amount: paymentData.config.amount,
-              currency: paymentData.config.currencyCode,
-            }),
-          }
-        );
+      const result = await response.json();
 
-        const result = await response.json();
-
-        if (result.success) {
-          return { success: true, transactionId: result.transactionId };
-        } else {
-          throw new Error(result.message || "Payment failed");
-        }
-      } catch (error) {
-        console.error("Gateway error:", error);
-        throw error;
+      if (result.success) {
+        return { success: true, transactionId: result.transactionId };
       }
+
+      throw new Error(result.message || 'Payment failed');
     },
   });
 
-  // Verificar disponibilidade ao carregar o componente
   useEffect(() => {
     checkAvailability();
   }, [checkAvailability]);
 
-  // Configuração de pagamento para Apple Pay
   const applePayConfig = {
     amount: 99.99,
     currencyCode: CURRENCIES.USD,
     countryCode: COUNTRIES.US,
-    label: "Produto Exemplo",
+    label: 'Produto Exemplo',
     supportedNetworks: [
       PAYMENT_NETWORKS.VISA,
       PAYMENT_NETWORKS.MASTERCARD,
@@ -98,12 +86,27 @@ const PaymentExample = () => {
     ],
   };
 
-  // Handler para pagamento com Apple Pay
+  const googlePayConfig = {
+    amount: 99.99,
+    currencyCode: CURRENCIES.USD,
+    countryCode: COUNTRIES.US,
+    label: 'Produto Exemplo',
+    environment: 'TEST',
+    tokenizationSpecification: {
+      type: 'PAYMENT_GATEWAY',
+      gateway: 'example',
+      gatewayMerchantId: 'exampleGatewayMerchantId',
+    },
+    merchantInfo: {
+      merchantName: 'Wallet Pay Example',
+    },
+  };
+
   const handleApplePayPress = async () => {
     if (!isApplePayAvailable) {
       showPaymentError(
-        "Apple Pay Indisponível",
-        "Apple Pay não está disponível neste dispositivo"
+        'Apple Pay Indisponível',
+        'Apple Pay não está disponível neste dispositivo'
       );
       return;
     }
@@ -111,24 +114,38 @@ const PaymentExample = () => {
     await processApplePayment(applePayConfig);
   };
 
-  // Handler para pagamento com Google Pay (futuro)
-  const handleGooglePayPress = () => {
-    Alert.alert("Em Breve", "Google Pay será implementado em breve!");
+  const handleGooglePayPress = async () => {
+    if (!isGooglePayAvailable) {
+      showPaymentError(
+        'Google Pay Indisponível',
+        'Google Pay não está disponível neste dispositivo'
+      );
+      return;
+    }
+
+    await processGooglePayment(googlePayConfig);
   };
 
-  // Handler para diagnóstico detalhado
+  const handleAutoPay = async () => {
+    // Usa disponibilidade em cache (sem re-checar o nativo)
+    await processPayment({
+      applePay: applePayConfig,
+      googlePay: googlePayConfig,
+    });
+  };
+
   const handleDiagnostics = async () => {
     const diagnostics = await getDiagnostics(applePayConfig.supportedNetworks);
 
     Alert.alert(
-      "Diagnóstico Apple Pay",
+      'Diagnóstico Apple Pay',
       `Platform: ${diagnostics.platform}
-Pode fazer pagamentos: ${diagnostics.canMakePayments ? "Sim" : "Não"}
-Tem cartões para as redes: ${diagnostics.hasCardsForNetworks ? "Sim" : "Não"}
-Redes testadas: ${diagnostics.supportedNetworks?.join(", ") || "N/A"}
+Pode fazer pagamentos: ${diagnostics.canMakePayments ? 'Sim' : 'Não'}
+Tem cartões para as redes: ${diagnostics.hasCardsForNetworks ? 'Sim' : 'Não'}
+Redes testadas: ${diagnostics.supportedNetworks?.join(', ') || 'N/A'}
 
 ${diagnostics.message}`,
-      [{ text: "OK" }]
+      [{ text: 'OK' }]
     );
   };
 
@@ -153,8 +170,7 @@ ${diagnostics.message}`,
                 availability.applePay && styles.available,
               ]}
             >
-              Apple Pay:{" "}
-              {availability.applePay ? "✅ Disponível" : "❌ Indisponível"}
+              Apple Pay: {availability.applePay ? 'Disponível' : 'Indisponível'}
             </Text>
             <Text
               style={[
@@ -162,9 +178,10 @@ ${diagnostics.message}`,
                 availability.googlePay && styles.available,
               ]}
             >
-              Google Pay:{" "}
-              {availability.googlePay ? "✅ Disponível" : "❌ Indisponível"}
+              Google Pay:{' '}
+              {availability.googlePay ? 'Disponível' : 'Indisponível'}
             </Text>
+            <Text style={styles.platformText}>Platform: {Platform.OS}</Text>
           </View>
 
           {isAnyPaymentAvailable ? (
@@ -202,6 +219,14 @@ ${diagnostics.message}`,
                 >
                   Pagar com Google Pay
                 </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.paymentButton, styles.autoPayButton]}
+                onPress={handleAutoPay}
+                disabled={isLoading}
+              >
+                <Text style={styles.buttonText}>Pagar (auto)</Text>
               </TouchableOpacity>
             </View>
           ) : (
@@ -243,120 +268,118 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 20,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: '#f5f5f5',
   },
   title: {
     fontSize: 24,
-    fontWeight: "bold",
-    textAlign: "center",
+    fontWeight: 'bold',
+    textAlign: 'center',
     marginBottom: 30,
-    color: "#333",
+    color: '#333',
   },
   checking: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   checkingText: {
     marginTop: 10,
     fontSize: 16,
-    color: "#666",
+    color: '#666',
   },
   content: {
     flex: 1,
   },
   availabilityContainer: {
-    backgroundColor: "white",
+    backgroundColor: 'white',
     padding: 20,
     borderRadius: 10,
     marginBottom: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   availabilityTitle: {
     fontSize: 18,
-    fontWeight: "600",
+    fontWeight: '600',
     marginBottom: 10,
-    color: "#333",
+    color: '#333',
   },
   availabilityText: {
     fontSize: 16,
     marginBottom: 5,
-    color: "#666",
+    color: '#666',
+  },
+  platformText: {
+    marginTop: 8,
+    fontSize: 14,
+    color: '#999',
   },
   available: {
-    color: "#4CAF50",
-    fontWeight: "500",
+    color: '#4CAF50',
+    fontWeight: '500',
   },
   paymentContainer: {
-    backgroundColor: "white",
+    backgroundColor: 'white',
     padding: 20,
     borderRadius: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
   },
   paymentTitle: {
     fontSize: 20,
-    fontWeight: "600",
-    textAlign: "center",
+    fontWeight: '600',
+    textAlign: 'center',
     marginBottom: 20,
-    color: "#333",
+    color: '#333',
   },
   paymentButton: {
     padding: 15,
     borderRadius: 8,
     marginBottom: 10,
-    alignItems: "center",
+    alignItems: 'center',
   },
   applePayButton: {
-    backgroundColor: "#000",
+    backgroundColor: '#000',
   },
   googlePayButton: {
-    backgroundColor: "#4285F4",
+    backgroundColor: '#4285F4',
+  },
+  autoPayButton: {
+    backgroundColor: '#34C759',
   },
   disabledButton: {
-    backgroundColor: "#ccc",
+    backgroundColor: '#ccc',
   },
   buttonText: {
-    color: "white",
+    color: 'white',
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   disabledText: {
-    color: "#999",
+    color: '#999',
   },
   noPaymentContainer: {
-    backgroundColor: "white",
+    backgroundColor: 'white',
     padding: 20,
     borderRadius: 10,
-    alignItems: "center",
+    alignItems: 'center',
   },
   noPaymentText: {
     fontSize: 16,
-    color: "#666",
-    textAlign: "center",
+    color: '#666',
+    textAlign: 'center',
   },
   refreshButton: {
-    backgroundColor: "#007AFF",
+    backgroundColor: '#007AFF',
     padding: 15,
     borderRadius: 8,
-    alignItems: "center",
+    alignItems: 'center',
     marginTop: 20,
   },
   refreshButtonText: {
-    color: "white",
+    color: 'white',
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: '600',
   },
   buttonRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     marginTop: 20,
     gap: 10,
   },
@@ -365,7 +388,7 @@ const styles = StyleSheet.create({
     marginTop: 0,
   },
   diagnosticButton: {
-    backgroundColor: "#FF9500",
+    backgroundColor: '#FF9500',
   },
 });
 

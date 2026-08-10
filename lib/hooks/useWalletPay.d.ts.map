@@ -1,0 +1,1 @@
+{"version":3,"file":"useWalletPay.d.ts","sourceRoot":"","sources":["../../src/hooks/useWalletPay.ts"],"names":[],"mappings":"AAIA,OAAO,KAAK,EAOV,iBAAiB,EACjB,mBAAmB,EACnB,kBAAkB,EAClB,eAAe,EAChB,MAAM,UAAU,CAAC;AAOlB;;GAEG;AACH,eAAO,MAAM,YAAY,GAAI,0DAI1B,mBAAwB,KAAG,kBAqU7B,CAAC;AAEF;;GAEG;AACH,eAAO,MAAM,WAAW,GACtB,gBAAe,OAAO,CAAC,eAAe,CAAM,KAC3C,iBAqIF,CAAC"}

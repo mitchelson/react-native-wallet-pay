@@ -1,6 +1,10 @@
-
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          package="com.reactlibrary">
+  package="com.reactlibrary">
 
+  <!--
+    Host apps should also add this meta-data under their <application> tag:
+    <meta-data
+      android:name="com.google.android.gms.wallet.api.enabled"
+      android:value="true" />
+  -->
 </manifest>
-  
