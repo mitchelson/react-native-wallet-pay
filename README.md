@@ -1,12 +1,36 @@
 # react-native-wallet-pay
 
-Biblioteca agnóstica de gateway para **Apple Pay** e **Google Pay** em React Native. O pacote obtém o token da carteira; o processamento fica no seu backend / PSP (Stripe, Adyen, PagSeguro, etc.).
+[![npm version](https://img.shields.io/npm/v/react-native-wallet-pay.svg)](https://www.npmjs.com/package/react-native-wallet-pay)
+[![CI](https://github.com/mitchelson/react-native-wallet-pay/actions/workflows/ci.yml/badge.svg)](https://github.com/mitchelson/react-native-wallet-pay/actions/workflows/ci.yml)
+[![license](https://img.shields.io/npm/l/react-native-wallet-pay.svg)](./LICENSE)
 
-## Instalação
+Gateway-agnostic **Apple Pay** and **Google Pay** for React Native.
+
+This library only collects a wallet payment token. Your backend / PSP (Stripe, Adyen, PagSeguro, Braintree, etc.) charges the customer.
+
+## Features
+
+- Apple Pay (iOS) via PassKit
+- Google Pay (Android) via Play Services Wallet
+- Gateway-agnostic `paymentProcessor` callback
+- React hook (`useWalletPay`) and imperative API
+- TypeScript-first (`lib/` + generated `.d.ts`)
+- Autolinking for React Native ≥ 0.60
+
+## Requirements
+
+| Platform | Notes |
+| --- | --- |
+| React Native | ≥ 0.60 (autolinking) |
+| iOS | ≥ 11, Apple Pay capability + Merchant ID |
+| Android | minSdk 21+, Google Play Services, Google Pay enabled in manifest |
+| Expo | Bare workflow / development builds only — **not** Expo Go |
+
+## Installation
 
 ```bash
 npm install react-native-wallet-pay
-# ou
+# or
 yarn add react-native-wallet-pay
 ```
 
@@ -16,9 +40,23 @@ yarn add react-native-wallet-pay
 cd ios && pod install && cd ..
 ```
 
+Enable Apple Pay in Xcode:
+
+1. Target → **Signing & Capabilities** → **+ Capability** → **Apple Pay**
+2. Select / create your Merchant ID (`merchant.com.yourapp`)
+
+Optional fallback in `Info.plist` (auto-detected if entitlements are missing):
+
+```xml
+<key>ApplePayMerchantIdentifier</key>
+<string>merchant.com.yourapp</string>
+```
+
+Without a Merchant ID, `isAvailable()` returns `applePay: false` and payments fail with `E_MERCHANT_ID_NOT_FOUND`.
+
 ### Android
 
-Autolinking cuida do pacote. No `AndroidManifest.xml` do app, dentro de `<application>`, adicione:
+Autolinking registers the native module. Add this inside the `<application>` tag of your app `AndroidManifest.xml`:
 
 ```xml
 <meta-data
@@ -26,21 +64,9 @@ Autolinking cuida do pacote. No `AndroidManifest.xml` do app, dentro de `<applic
   android:value="true" />
 ```
 
-## Configuração do merchantIdentifier (iOS)
+For Google Pay test cards, join the [Google Pay API Test Cards Allowlist](https://groups.google.com/g/googlepay-test-mode-stub-data).
 
-O módulo detecta o Merchant ID automaticamente:
-
-1. **Preferencial:** Xcode → Target → *Signing & Capabilities* → *Apple Pay* (entitlement `com.apple.developer.in-app-payments`)
-2. **Fallback:** chave `ApplePayMerchantIdentifier` no `Info.plist`
-
-```xml
-<key>ApplePayMerchantIdentifier</key>
-<string>merchant.com.seuapp</string>
-```
-
-Sem Merchant ID configurado, `isAvailable()` retorna `applePay: false` e o pagamento falha com `E_MERCHANT_ID_NOT_FOUND`.
-
-## Uso básico
+## Quick start
 
 ```tsx
 import React, { useEffect } from 'react';
@@ -61,17 +87,18 @@ export function Checkout() {
     isLoading,
   } = useWalletPay({
     paymentProcessor: async ({ provider, token, config }) => {
-      // Envie o token ao seu backend / gateway
-      const res = await fetch('https://api.seuapp.com/pay', {
+      const res = await fetch('https://api.yourapp.com/pay', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider, token, amount: config.amount }),
+        body: JSON.stringify({
+          provider,
+          token,
+          amount: config.amount,
+        }),
       });
       const data = await res.json();
-      return { success: data.ok, transactionId: data.id };
+      return { success: !!data.ok, transactionId: data.id };
     },
-    onPaymentSuccess: (result) => console.log('OK', result),
-    onPaymentError: (error) => console.error(error),
   });
 
   useEffect(() => {
@@ -80,7 +107,7 @@ export function Checkout() {
 
   return (
     <Button
-      title={isLoading ? 'Processando…' : 'Pagar'}
+      title={isLoading ? 'Processing…' : 'Pay'}
       disabled={isLoading || (!isApplePayAvailable && !isGooglePayAvailable)}
       onPress={() =>
         processPayment({
@@ -88,7 +115,7 @@ export function Checkout() {
             amount: 29.9,
             currencyCode: CURRENCIES.BRL,
             countryCode: COUNTRIES.BR,
-            label: 'Pedido #123',
+            label: 'Order #123',
             supportedNetworks: [
               PAYMENT_NETWORKS.VISA,
               PAYMENT_NETWORKS.MASTERCARD,
@@ -98,14 +125,14 @@ export function Checkout() {
             amount: 29.9,
             currencyCode: CURRENCIES.BRL,
             countryCode: COUNTRIES.BR,
-            label: 'Pedido #123',
+            label: 'Order #123',
             environment: 'TEST',
             tokenizationSpecification: {
               type: 'PAYMENT_GATEWAY',
               gateway: 'stripe',
               gatewayMerchantId: 'acct_xxx',
             },
-            merchantInfo: { merchantName: 'Sua Loja' },
+            merchantInfo: { merchantName: 'Your Store' },
           },
         })
       }
@@ -114,48 +141,94 @@ export function Checkout() {
 }
 ```
 
-### API principal
+See [`example/PaymentExample.js`](./example/PaymentExample.js) for a fuller checkout UI.
 
-| API | Descrição |
+## Imperative API
+
+```ts
+import WalletPay, { COUNTRIES, CURRENCIES } from 'react-native-wallet-pay';
+
+const availability = await WalletPay.isAvailable();
+// { applePay: boolean, googlePay: boolean }
+
+await WalletPay.processPayment(
+  {
+    applePay: {
+      amount: '10.00',
+      currencyCode: CURRENCIES.USD,
+      countryCode: COUNTRIES.US,
+      label: 'Coffee',
+    },
+  },
+  async ({ provider, token }) => {
+    // send token to your backend
+    return { success: true, transactionId: 'txn_123' };
+  }
+);
+```
+
+## API
+
+| API | Description |
 | --- | --- |
-| `isAvailable()` | `{ applePay, googlePay }` |
-| `processPayment(config, processor?)` | Fluxo completo + callback de gateway |
-| `useWalletPay(options)` | Hook com estado, loading e helpers |
-| `requestApplePayment` / `requestGooglePayment` | Chamadas de baixo nível |
+| `useWalletPay(options)` | Hook with loading/availability state and payment helpers |
+| `WalletPay.isAvailable()` | `{ applePay, googlePay }` |
+| `WalletPay.processPayment(config, processor?)` | Full flow; completes Apple Pay after the processor returns |
+| `WalletPay.requestApplePayment(config)` | Low-level Apple Pay sheet |
+| `WalletPay.requestGooglePayment(config)` | Low-level Google Pay sheet |
+| `WalletPay.getApplePayDiagnostics(networks?)` | iOS setup diagnostics |
 
-`processPayment` no hook usa a disponibilidade em cache. Passe `{ refreshAvailability: true }` para forçar uma nova checagem nativa.
+`useWalletPay().processPayment` uses **cached** availability. Pass `{ refreshAvailability: true }` to force a native re-check.
 
-## Google Pay
+### `GooglePayConfig` (required fields)
 
-Requer um `tokenizationSpecification` do seu gateway (ou `DIRECT` com chave pública). Em desenvolvimento use `environment: 'TEST'`.
+```ts
+{
+  amount: number | string;
+  currencyCode: string;
+  countryCode: string;
+  environment?: 'TEST' | 'PRODUCTION'; // default TEST
+  tokenizationSpecification: {
+    type: 'PAYMENT_GATEWAY' | 'DIRECT';
+    gateway?: string;           // e.g. 'stripe'
+    gatewayMerchantId?: string; // gateway account id
+    publicKey?: string;         // DIRECT only
+  };
+  merchantInfo?: { merchantId?: string; merchantName?: string };
+  allowedCardNetworks?: Array<'VISA' | 'MASTERCARD' | 'AMEX' | ...>;
+}
+```
 
-Consulte a [documentação do Google Pay](https://developers.google.com/pay/api/android/overview) para registrar o merchant e o gateway.
+Use `environment: 'TEST'` while integrating. Switch to `PRODUCTION` only after Google Pay production access is approved.
 
 ## Expo
 
-Compatível com **Expo bare workflow** / **development builds** (CNG), porque depende de código nativo (PassKit + Play Services Wallet).
+Works with **Expo bare / prebuild / development builds** (native modules required).
 
-- Não funciona no **Expo Go**
-- Após instalar: `npx expo prebuild` (se aplicável) e configure Apple Pay capabilities / meta-data do Google Pay como acima
+```bash
+npx expo install react-native-wallet-pay
+npx expo prebuild
+```
 
-## Exemplo
+Then configure Apple Pay entitlements and the Google Pay manifest meta-data as above. It will **not** run inside Expo Go.
 
-Veja `example/PaymentExample.js` para um componente completo de checkout (Apple Pay + Google Pay).
+## Troubleshooting
+
+- [TROUBLESHOOTING.md](./TROUBLESHOOTING.md) — autolinking / Haste map / pods
+- Optional Apple Pay debug helper (not part of the public API):
+
+```ts
+import { testApplePaySetup } from 'react-native-wallet-pay/lib/diagnostics/testApplePaySetup';
+```
+
+## Example app
 
 ```bash
 yarn example:ios
 yarn example:android
 ```
 
-## Diagnóstico (opcional)
-
-O helper de debug **não** faz parte da API pública:
-
-```ts
-import { testApplePaySetup } from 'react-native-wallet-pay/lib/diagnostics/testApplePaySetup';
-```
-
-## Desenvolvimento
+## Contributing
 
 ```bash
 yarn install
@@ -165,39 +238,8 @@ yarn typecheck
 yarn test
 ```
 
-## Publicação no npm (Trusted Publishing)
+Releases are published from GitHub Actions via [npm Trusted Publishing](https://docs.npmjs.com/trusted-publishers/) when a GitHub Release is created (see [CHANGELOG.md](./CHANGELOG.md)).
 
-O workflow [`.github/workflows/publish.yml`](.github/workflows/publish.yml) publica via **npm Trusted Publishing** (OIDC) — sem `NPM_TOKEN` / Automation token.
+## License
 
-### Setup (uma vez) no npmjs.com
-
-1. Abra o pacote → **Settings** → **Trusted Publisher**
-2. Provider: **GitHub Actions**
-3. Preencha:
-   - **Organization or user:** `mitchelson`
-   - **Repository:** `react-native-wallet-pay`
-   - **Workflow filename:** `publish.yml` (só o nome do arquivo)
-   - **Environment name:** deixe vazio (não usamos GitHub Environment)
-4. Allowed action: **npm publish**
-5. Salve
-
-Não é necessário criar Access Token nem secret no GitHub.
-
-### Publicar uma versão
-
-1. Atualize `version` no `package.json` e o `CHANGELOG.md` na `master`
-2. Crie e envie a tag:
-
-```bash
-git tag v1.1.0
-git push origin v1.1.0
-```
-
-3. No GitHub: **Releases → Draft a new release** → tag `v1.1.0` → **Publish release**
-4. O Action autentica via OIDC, gera provenance e publica
-
-A versão no `package.json` precisa coincidir com a tag (`v1.1.0` ↔ `1.1.0`).
-
-## Licença
-
-MIT
+MIT © [Mitchelson Silva](https://github.com/mitchelson)
