@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-08-10
+
+### Changed
+- Rewrote README to match npm library conventions (English, badges, requirements, quick start, API overview)
+
 ### Added
 - GitHub Actions workflow to publish to npm on GitHub Release via **Trusted Publishing** (OIDC, no `NPM_TOKEN`)
 
